@@ -1,0 +1,439 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Sign Up - Django Auth System{% endblock %}
+
+{% block content %}
+<div class="center-container">
+  <div class="left-part">
+    <img src="{% static 'img/signup.jpg' %}" alt="Health and Care" class="login-img" />
+  </div>
+
+  <div class="right-part">
+    <h3><i class="fas fa-user-plus"></i> Create Your Account</h3>
+
+    <form method="post" enctype="multipart/form-data" id="signupForm" class="signup-form">
+      {% csrf_token %}
+      
+      <div class="form-step active-step" id="step-1">
+        <label class="form-label">I am a *</label>
+        {{ form.user_type }}
+
+        <label class="form-label">First Name *</label>
+        {{ form.first_name }}
+        {% if form.first_name.errors %}<div class="error">{{ form.first_name.errors }}</div>{% endif %}
+
+        <label class="form-label">Last Name *</label>
+        {{ form.last_name }}
+        {% if form.last_name.errors %}<div class="error">{{ form.last_name.errors }}</div>{% endif %}
+
+        <label class="form-label">Username *</label>
+        <div class="position-relative">
+            {{ form.username }}
+            <div class="validation-spinner" id="usernameSpinner" style="display: none;">
+                <i class="fas fa-spinner fa-spin"></i>
+            </div>
+        </div>
+        <small id="usernameHelp" class="form-text"></small>
+        {% if form.username.errors %}<div class="error">{{ form.username.errors }}</div>{% endif %}
+
+        <label class="form-label">Password *</label>
+        <div class="position-relative">
+            {{ form.password1 }}
+            <button type="button" class="password-toggle" id="togglePassword1">
+                <i class="fas fa-eye"></i>
+            </button>
+        </div>
+        <div class="password-strength-container">
+            <div class="password-strength-bar">
+                <div class="strength-fill" id="strengthBar"></div>
+            </div>
+        </div>
+        <small id="password1Help" class="form-text"></small>
+        {% if form.password1.errors %}<div class="error">{{ form.password1.errors }}</div>{% endif %}
+
+        <label class="form-label">Confirm Password *</label>
+         <div class="position-relative">
+              {{ form.password2 }}
+              <button type="button" class="password-toggle" id="togglePassword2">
+                  <i class="fas fa-eye"></i>
+              </button>
+          </div>
+          <small id="passwordMatch" class="form-text"></small>
+          {% if form.password2.errors %}<div class="error">{{ form.password2.errors }}</div>{% endif %}
+       
+        <button type="button" class="btn btn-secondary btn-lg" id="to-step-2">Continue</button>
+      </div>
+
+      <div class="form-step" id="step-2">
+        <label class="form-label">Email Address *</label>
+        <div class="position-relative">
+            {{ form.email }}
+            <div class="validation-spinner" id="emailSpinner" style="display: none;">
+                <i class="fas fa-spinner fa-spin"></i>
+            </div>
+        </div>
+        <small id="emailHelp" class="form-text"></small>
+        {% if form.email.errors %}<div class="error">{{ form.email.errors }}</div>{% endif %}
+
+        <label class="form-label">Address Line 1 *</label>
+        {{ form.address_line1 }}
+        {% if form.address_line1.errors %}<div class="error">{{ form.address_line1.errors }}</div>{% endif %}
+
+        <label class="form-label">City *</label>
+        {{ form.city }}
+        {% if form.city.errors %}<div class="error">{{ form.city.errors }}</div>{% endif %}
+
+        <label class="form-label">State *</label>
+        {{ form.state }}
+        {% if form.state.errors %}<div class="error">{{ form.state.errors }}</div>{% endif %}
+
+        <label class="form-label">Pincode *</label>
+        {{ form.pincode }}
+        {% if form.pincode.errors %}<div class="error">{{ form.pincode.errors }}</div>{% endif %}
+
+        <label class="form-label">Profile Picture (optional)</label>
+        {{ form.profile_picture }}
+        
+        <div id="validationSummary" class="alert" style="display: none; margin-top: 15px;">
+            <strong><i class="fas fa-info-circle"></i> Form Status:</strong>
+            <ul id="validationList" style="margin-bottom: 0;"></ul>
+        </div>
+        <button type="button" class="btn btn-secondary btn-lg" id="to-step-1">Back</button>
+        <button type="submit" class="btn btn-primary btn-lg" id="submitBtn">Create Account</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    // --- Multi-step form elements ---
+    const step1 = document.getElementById('step-1');
+    const step2 = document.getElementById('step-2');
+    const btnToStep2 = document.getElementById('to-step-2');
+    const btnToStep1 = document.getElementById('to-step-1');
+    
+    // --- Validation elements ---
+    const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    const usernameField = document.querySelector('input[name="username"]');
+    const emailField = document.querySelector('input[name="email"]');
+    const password1Field = document.querySelector('input[name="password1"]');
+    const password2Field = document.querySelector('input[name="password2"]');
+    const submitBtn = document.getElementById('submitBtn');
+
+    let validationState = {
+        username: false,
+        email: false,
+        password: false,
+        passwordMatch: false
+    };
+
+    // --- Multi-step click listeners ---
+    btnToStep2.addEventListener('click', () => {
+      step1.classList.remove('active-step');
+      step2.classList.add('active-step');
+      // Run email check in case user autofilled
+      checkEmail(); 
+      updateValidationSummary();
+    });
+
+    btnToStep1.addEventListener('click', () => {
+      step1.classList.add('active-step');
+      step2.classList.remove('active-step');
+    });
+
+    // --- Debounce function ---
+    function debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    }
+
+    // ============ USERNAME VALIDATION ============
+    const checkUsername = debounce(function() {
+        const username = usernameField.value.trim();
+        const helpText = document.getElementById('usernameHelp');
+        const spinner = document.getElementById('usernameSpinner');
+
+        if (username.length < 3) {
+            helpText.textContent = 'Username must be at least 3 characters';
+            helpText.className = 'form-text text-danger';
+            usernameField.classList.remove('is-valid');
+            usernameField.classList.add('is-invalid');
+            validationState.username = false;
+            updateValidationSummary();
+            updateStep1Button(); // <-- START BUG FIX 2
+            return;
+        }
+        spinner.style.display = 'block';
+        fetch("{% url 'users:check_username' %}", {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRFToken': csrftoken},
+            body: `username=${encodeURIComponent(username)}`
+        })
+        .then(response => response.json())
+        .then(data => {
+            spinner.style.display = 'none';
+            helpText.textContent = data.message;
+            if (data.available) {
+                helpText.className = 'form-text text-success';
+                usernameField.classList.remove('is-invalid');
+                usernameField.classList.add('is-valid');
+                validationState.username = true;
+            } else {
+                helpText.className = 'form-text text-danger';
+                usernameField.classList.remove('is-valid');
+                usernameField.classList.add('is-invalid');
+                validationState.username = false;
+            }
+            updateValidationSummary();
+            updateStep1Button(); // <-- BUG FIX 2
+        })
+        .catch(error => {
+            spinner.style.display = 'none';
+            console.error('Error:', error);
+            updateStep1Button(); // <-- BUG FIX 2
+        });
+    }, 500);
+    usernameField.addEventListener('input', checkUsername);
+
+    // ============ EMAIL VALIDATION ============
+    const checkEmail = debounce(function() {
+        const email = emailField.value.trim();
+        const helpText = document.getElementById('emailHelp');
+        const spinner = document.getElementById('emailSpinner');
+
+        if (!email) {
+            helpText.textContent = '';
+            emailField.classList.remove('is-valid', 'is-invalid');
+            validationState.email = false;
+            updateValidationSummary();
+            return;
+        }
+        spinner.style.display = 'block';
+        fetch("{% url 'users:check_email' %}", {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRFToken': csrftoken},
+            body: `email=${encodeURIComponent(email)}`
+        })
+        .then(response => response.json())
+        .then(data => {
+            spinner.style.display = 'none';
+            helpText.textContent = data.message;
+            if (data.available) {
+                helpText.className = 'form-text text-success';
+                emailField.classList.remove('is-invalid');
+                emailField.classList.add('is-valid');
+                validationState.email = true;
+            } else {
+                helpText.className = 'form-text text-danger';
+                emailField.classList.remove('is-valid');
+                emailField.classList.add('is-invalid');
+                validationState.email = false;
+            }
+            updateValidationSummary();
+        })
+        .catch(error => {
+            spinner.style.display = 'none';
+            console.error('Error:', error);
+        });
+    }, 500);
+    emailField.addEventListener('input', checkEmail);
+
+    // ============ PASSWORD VALIDATION ============
+    const validatePasswordStrength = debounce(function() {
+        const password = password1Field.value;
+        const helpText = document.getElementById('password1Help');
+        const strengthBar = document.getElementById('strengthBar');
+
+        if (!password) {
+            helpText.textContent = '';
+            strengthBar.style.width = '0%';
+            strengthBar.className = 'strength-fill';
+            validationState.password = false;
+            updateValidationSummary();
+            updateStep1Button(); // <-- BUG FIX 2
+            return;
+        }
+        fetch("{% url 'users:validate_password' %}", {
+            method: 'POST',
+            headers: {'Content-Type': 'application/x-www-form-urlencoded', 'X-CSRFToken': csrftoken},
+            body: `password=${encodeURIComponent(password)}`
+        })
+        .then(response => response.json())
+        .then(data => {
+            helpText.textContent = data.message;
+            if (data.strength === 'strong' || data.strength === 'medium') {
+                strengthBar.style.width = data.strength === 'strong' ? '100%' : '60%';
+                strengthBar.className = data.strength === 'strong' ? 'strength-fill strength-strong' : 'strength-fill strength-medium';
+                helpText.className = data.strength === 'strong' ? 'form-text text-success' : 'form-text text-warning';
+                password1Field.classList.remove('is-invalid');
+                password1Field.classList.add('is-valid');
+                validationState.password = true;
+            } else { // weak
+                strengthBar.style.width = '30%';
+                strengthBar.className = 'strength-fill strength-weak';
+                helpText.className = 'form-text text-danger';
+                password1Field.classList.remove('is-valid');
+                password1Field.classList.add('is-invalid');
+                validationState.password = false;
+            }
+            checkPasswordMatch(); // Check match when pass1 changes
+            updateValidationSummary();
+            updateStep1Button(); // <-- BUG FIX 2
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            updateStep1Button(); // <-- BUG FIX 2
+        });
+    }, 300);
+    password1Field.addEventListener('input', validatePasswordStrength);
+
+    // ============ PASSWORD MATCH ============
+    function checkPasswordMatch() {
+        const password_1 = password1Field.value;
+        const password_2 = password2Field.value;
+        const matchText = document.getElementById('passwordMatch');
+
+        if (!password_2 && !password_1) { // Both empty
+            matchText.textContent = '';
+            password2Field.classList.remove('is-valid', 'is-invalid');
+            validationState.passwordMatch = false;
+        } else if (password_1 === password_2) {
+            matchText.textContent = 'Passwords match';
+            matchText.className = 'form-text text-success';
+            password2Field.classList.remove('is-invalid');
+            password2Field.classList.add('is-valid');
+            validationState.passwordMatch = true;
+        } else {
+            matchText.textContent = 'Passwords do not match';
+            matchText.className = 'form-text text-danger';
+            password2Field.classList.remove('is-valid');
+            password2Field.classList.add('is-invalid');
+            validationState.passwordMatch = false;
+        }
+        updateValidationSummary();
+        updateStep1Button(); // <-- BUG FIX 2
+    }
+    password2Field.addEventListener('input', checkPasswordMatch);
+
+    // ============ PASSWORD TOGGLE ============
+    document.getElementById('togglePassword1').addEventListener('click', function() {
+        const type = password1Field.type === 'password' ? 'text' : 'password';
+        password1Field.type = type;
+        this.querySelector('i').classList.toggle('fa-eye');
+        this.querySelector('i').classList.toggle('fa-eye-slash');
+    });
+    document.getElementById('togglePassword2').addEventListener('click', function() {
+        const type = password2Field.type === 'password' ? 'text' : 'password';
+        password2Field.type = type;
+        this.querySelector('i').classList.toggle('fa-eye');
+        this.querySelector('i').classList.toggle('fa-eye-slash');
+    });
+
+    // ============ STEP 1 BUTTON CONTROL (BUG FIX 2) ============
+    function updateStep1Button() {
+        const step1Valid = validationState.username && validationState.password && validationState.passwordMatch;
+        btnToStep2.disabled = !step1Valid;
+        if (step1Valid) {
+            btnToStep2.classList.remove('btn-secondary');
+            btnToStep2.classList.add('btn-primary');
+        } else {
+            btnToStep2.classList.remove('btn-primary');
+            btnToStep2.classList.add('btn-secondary');
+        }
+    }
+
+    // ============ VALIDATION SUMMARY & SUBMIT BUTTON ============
+    function updateValidationSummary() {
+        // BUG FIX 1: Check if summary element exists before using it
+        const summary = document.getElementById('validationSummary');
+        const list = document.getElementById('validationList');
+        if (!summary || !list) return; // Exit if elements not found
+
+        const checks = [
+            { key: 'username', label: 'Username availability' },
+            { key: 'email', label: 'Email availability' },
+            { key: 'password', label: 'Password strength' },
+            { key: 'passwordMatch', label: 'Password confirmation' }
+        ];
+
+        list.innerHTML = '';
+        let allValid = true;
+
+        checks.forEach(check => {
+            const li = document.createElement('li');
+            if (validationState[check.key]) {
+                li.innerHTML = `<i class="fas fa-check-circle text-success"></i> ${check.label}`;
+            } else {
+                li.innerHTML = `<i class="fas fa-times-circle text-danger"></i> ${check.label}`;
+                allValid = false;
+            }
+            list.appendChild(li);
+        });
+
+        // Show summary only if on step 2
+        if (step2.classList.contains('active-step')) {
+            summary.style.display = 'block';
+            if (allValid) {
+                summary.className = 'alert alert-success';
+            } else {
+                summary.className = 'alert alert-warning';
+            }
+        }
+
+        // Enable/disable submit button
+        submitBtn.disabled = !allValid;
+        if (allValid) {
+            // START BUG FIX 3: Correctly remove secondary and add primary
+            submitBtn.classList.remove('btn-secondary');
+            submitBtn.classList.add('btn-primary');
+            // END BUG FIX 3
+        } else {
+            submitBtn.classList.remove('btn-primary');
+            submitBtn.classList.add('btn-secondary');
+        }
+    }
+
+    // --- Initial State ---
+    submitBtn.disabled = true;
+    submitBtn.classList.add('btn-secondary');
+    btnToStep2.disabled = true; // <-- BUG FIX 2
+    btnToStep2.classList.add('btn-secondary'); // <-- BUG FIX 2
+  });
+</script>
+
+<style>
+  .form-step {
+    display: none;
+  }
+  .active-step {
+    display: block;
+    animation: fadeIn 0.5s ease;
+  }
+  /* Add alert styles if not already in your main CSS */
+  .alert {
+    padding: 1rem;
+    margin-bottom: 1rem;
+    border: 1px solid transparent;
+    border-radius: 0.25rem;
+  }
+  .alert-warning {
+    color: #856404;
+    background-color: #fff3cd;
+    border-color: #ffeeba;
+  }
+  .alert-success {
+    color: #155724;
+    background-color: #d4edda;
+    border-color: #c3e6cb;
+  }
+</style>
+
+{% endblock %}

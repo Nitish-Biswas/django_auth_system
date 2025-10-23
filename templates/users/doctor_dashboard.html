@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block title %}Doctor Dashboard{% endblock %}
+
+{% block content %}
+<div class="dashboard-wrapper">
+  <!-- Profile Card -->
+  <div class="card profile-card animate-fade">
+    <div class="profile-info">
+      {% if user.profile_picture %}
+        <img src="{{ user.profile_picture.url }}" alt="Dr. {{ user.get_full_name }}" class="profile-pic rounded-circle">
+      {% else %}
+        <i class="fas fa-user-md fa-5x text-blue"></i>
+      {% endif %}
+      <h3>Dr. {{ user.get_full_name }}</h3>
+      <p class="username">@{{ user.username }}</p>
+      <span class="badge bg-primary">Doctor</span>
+    </div>
+    <div class="details">
+      <ul>
+        <li><i class="fas fa-user"></i> <strong>First Name:</strong> {{ user.first_name }}</li>
+        <li><i class="fas fa-user"></i> <strong>Last Name:</strong> {{ user.last_name }}</li>
+        <li><i class="fas fa-envelope"></i> <strong>Email:</strong> {{ user.email }}</li>
+        <li><i class="fas fa-phone"></i> <strong>Phone:</strong> {{ user.phone_number|default:"Not provided" }}</li>
+        <li><i class="fas fa-map-marker-alt"></i> <strong>Address:</strong> {{ user.address_line1 }}, {{ user.city }}, {{ user.state }} - {{ user.pincode }}</li>
+        <li><i class="fas fa-calendar-plus"></i> <strong>Joined:</strong> {{ user.date_joined|date:"M d, Y" }}</li>
+        <li><i class="fas fa-calendar-check"></i> <strong>Last Updated:</strong> {{ user.last_login|date:"M d, Y" }}</li>
+      </ul>
+    </div>
+  </div>
+  <!-- Actions Card -->
+  <div class="card actions-card animate-fade-delay">
+    <h4>Quick Actions</h4>
+    <div class="actions">
+      <button class="btn btn-primary"><i class="fas fa-users"></i> View Patients</button>
+      <button class="btn btn-info"><i class="fas fa-calendar-check"></i> Appointments</button>
+      <button class="btn btn-warning"><i class="fas fa-prescription"></i> Write Prescription</button>
+      <button class="btn btn-success"><i class="fas fa-file-medical-alt"></i> Medical Records</button>
+    </div>
+  </div>
+</div>
+{% endblock %}
