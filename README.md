@@ -16,6 +16,22 @@
 
   - Clean, responsive UI.
 
+## Snapshots
+
+<p align="center">
+  <img src="sanpshots/snapshot_1.png" alt="Snapshot 1" width="500"/>
+  <img src="sanpshots/snapshot_2.png" alt="Snapshot 2" width="500"/>
+</p>
+<p align="center">
+  <img src="sanpshots/snapshot_3.png" alt="Snapshot 3" width="500"/>
+  <img src="sanpshots/snapshot_4.png" alt="Snapshot 4" width="500"/>
+</p>
+<p align="center">
+  <img src="sanpshots/snapshot_5.png" alt="Snapshot 5" width="500"/>
+  
+</p>
+
+
 - **Security & Best Practices**:
 
   - Custom authentication forms.
